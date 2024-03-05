@@ -1,0 +1,6 @@
+[submodule "media-server"]
+	path = media-server
+	url = https://github.com/medooze/media-server
+[submodule "pybind11"]
+	path = pybind11
+	url = https://github.com/pybind/pybind11
