@@ -1,63 +1,22 @@
 #include <DTLSICETransport.h>
+#include <PCAPTransportEmulator.h>
 #include <RTPBundleTransport.h>
+#include <SimulcastMediaFrameListener.h>
 #include <pybind11/pybind11.h>
+#include <rtp/RTPIncomingMediaStreamDepacketizer.h>
+
 #include "MediaServer.hpp"
+#include "DTLSICETransportListener.hpp"
+#include "RTPSessionFacade.hpp"
+#include "ActiveSpeakerDetectorFacade.hpp"
+#include "ActiveSpeakerMultiplexerFacade.hpp"
+#include "MediaFrameReader.hpp"
+#include "MP4RecorderFacade.hpp"
+#include "PlayerFacade.hpp"
+#include "RTPStreamTransponderFacade.hpp"
+#include "SenderSideEstimatorListener.hpp"
+
 namespace py = pybind11;
-
-class DTLSICETransportListener : public DTLSICETransport::Listener {
-public:
-    DTLSICETransportListener(py::function on_ice_timeout, py::function on_dtls_state_changed,
-                             py::function on_remote_ice_candidate_activated) {
-        this->on_ice_timeout = on_ice_timeout;
-        this->on_dtls_state_changed = on_dtls_state_changed;
-        this->on_remote_ice_candidate_activated = on_remote_ice_candidate_activated;
-    }
-
-    ~DTLSICETransportListener() override = default;
-
-    void onRemoteICECandidateActivated(const std::string &ip, uint16_t port, uint32_t priority) override {
-        on_remote_ice_candidate_activated(ip, port, priority);
-    }
-
-    void onDTLSStateChanged(const DTLSICETransport::DTLSState state) override {
-        std::string stateStr;
-        switch (state) {
-            case DTLSICETransport::DTLSState::New: {
-                stateStr = "new";
-                break;
-            }
-            case DTLSICETransport::DTLSState::Connecting: {
-                stateStr = "connecting";
-                break;
-            }
-            case DTLSICETransport::DTLSState::Connected: {
-                stateStr = "connected";
-                break;
-            }
-            case DTLSICETransport::DTLSState::Closed: {
-                stateStr = "closed";
-                break;
-            }
-            case DTLSICETransport::DTLSState::Failed: {
-                stateStr = "failed";
-                break;
-            }
-        }
-
-        if (stateStr.empty())
-            return;
-        on_dtls_state_changed(stateStr);
-    }
-
-    void onICETimeout() override {
-        on_ice_timeout();
-    }
-
-private:
-    py::function on_ice_timeout;
-    py::function on_dtls_state_changed;
-    py::function on_remote_ice_candidate_activated;
-};
 
 Logger Logger::instance;
 
@@ -151,7 +110,7 @@ PYBIND11_MODULE(pymedooze, m) {
             .def("mute", &RTPIncomingMediaStream::Mute);
 
     py::class_<RTPIncomingMediaStreamMultiplexer>(m, "RTPIncomingMediaStreamMultiplexer")
-            .def(py::init<const std::shared_ptr<RTPIncomingMediaStream>, TimeService>())
+            .def(py::init<const std::shared_ptr<RTPIncomingMediaStream>, TimeService &>())
             .def("stop", &RTPIncomingMediaStreamMultiplexer::Stop);
 
     py::class_<RTPIncomingSource>(m, "RTPIncomingSource")
@@ -207,8 +166,8 @@ PYBIND11_MODULE(pymedooze, m) {
             .def_readwrite("mid", &RTPIncomingSourceGroup::mid)
             .def_readwrite("rtt", &RTPIncomingSourceGroup::rtt)
             .def_readwrite("type", &RTPIncomingSourceGroup::type)
-            .def_readwrite("media", &RTPIncomingSourceGroup::media)
-            .def_readwrite("rtx", &RTPIncomingSourceGroup::rtx)
+            .def_readonly("media", &RTPIncomingSourceGroup::media)
+            .def_readonly("rtx", &RTPIncomingSourceGroup::rtx)
             .def_readwrite("lost", &RTPIncomingSourceGroup::lost)
             .def_readwrite("min_waited_time", &RTPIncomingSourceGroup::minWaitedTime)
             .def_readwrite("max_waited_time", &RTPIncomingSourceGroup::maxWaitedTime)
@@ -239,5 +198,143 @@ PYBIND11_MODULE(pymedooze, m) {
             .def("AddMediaListener", &MediaFrame::Producer::AddMediaListener)
             .def("RemoveMediaListener", &MediaFrame::Producer::RemoveMediaListener);
 
+    py::class_<LayerInfo>(m, "LayerInfo")
+            .def_readwrite_static("max_layer_id", &LayerInfo::MaxLayerId)
+            .def_readwrite("temporal_layer_id", &LayerInfo::temporalLayerId)
+            .def_readwrite("spatial_layer_id", &LayerInfo::spatialLayerId);
+
+    py::class_<LayerSource>(m, "LayerSource")
+            .def_readwrite("num_packets", &LayerSource::numPackets)
+            .def_readwrite("total_bytes", &LayerSource::totalBytes)
+            .def_readwrite("bitrate", &LayerSource::bitrate)
+            .def_readwrite("total_bitrate", &LayerSource::totalBitrate)
+            .def_readwrite("active", &LayerSource::active)
+            .def("get_target_bitrate", [](LayerSource &self) { return self.targetBitrate.value_or(0); })
+            .def("get_target_width", [](LayerSource &self) { return self.targetWidth.value_or(0); })
+            .def("get_target_height", [](LayerSource &self) { return self.targetHeight.value_or(0); })
+            .def("get_target_fps", [](LayerSource &self) { return self.targetFps.value_or(0); });
+
+    py::class_<RTPSource>(m, "RTPSource")
+            .def_readwrite("ssrc", &RTPSource::ssrc)
+            .def_readwrite("ext_seq_num", &RTPSource::extSeqNum)
+            .def_readwrite("cycles", &RTPSource::cycles)
+            .def_readwrite("jitter", &RTPSource::jitter)
+            .def_readwrite("num_packets", &RTPSource::numPackets)
+            .def_readwrite("num_packets_delta", &RTPSource::numPacketsDelta)
+            .def_readwrite("num_rtcp_packets", &RTPSource::numRTCPPackets)
+            .def_readwrite("total_bytes", &RTPSource::totalBytes)
+            .def_readwrite("total_rtcp_bytes", &RTPSource::totalRTCPBytes)
+            .def_readwrite("bitrate", &RTPSource::bitrate)
+            .def_readwrite("total_bitrate", &RTPSource::totalBitrate)
+            .def_readwrite("clockrate", &RTPSource::clockrate);
+
+    py::class_<RTPSessionFacade>(m, "RTPSessionFacade")
+            .def(py::init<MediaFrame::Type>())
+            .def("init", &RTPSessionFacade::Init)
+            .def("set_local_port", &RTPSessionFacade::SetLocalPort)
+            .def("get_local_port", &RTPSessionFacade::GetLocalPort)
+            .def("set_remote_port", &RTPSessionFacade::SetRemotePort)
+            .def("get_outgoing_source_group", &RTPSessionFacade::GetOutgoingSourceGroup)
+            .def("get_incoming_source_group", &RTPSessionFacade::GetIncomingSourceGroup)
+            .def("end", &RTPSessionFacade::End)
+            .def("send_pli", &RTPSessionFacade::SendPLI)
+            .def("reset", &RTPSessionFacade::Reset)
+            .def("get_time_service", &RTPSessionFacade::GetTimeService);
+
+    py::class_<PCAPTransportEmulator>(m, "PCAPTransportEmulator")
+            .def("set_remote_properties", &PCAPTransportEmulator::SetRemoteProperties)
+            .def("add_incoming_source_group", &PCAPTransportEmulator::AddIncomingSourceGroup)
+            .def("remove_incoming_source_group", &PCAPTransportEmulator::RemoveIncomingSourceGroup)
+            .def("open", &PCAPTransportEmulator::Open)
+            .def("set_reader", &PCAPTransportEmulator::SetReader)
+            .def("play", &PCAPTransportEmulator::Play)
+            .def("seek", &PCAPTransportEmulator::Seek)
+            .def("stop", &PCAPTransportEmulator::Stop)
+            .def("close", &PCAPTransportEmulator::Close)
+            /*.def("get_time_service", &RTPSessionFacade::GetTimeService)*/;
+
+    py::class_<ActiveSpeakerDetectorFacade>(m, "ActiveSpeakerDetector")
+            .def(py::init<py::function>())
+            .def("set_min_change_period", &ActiveSpeakerDetectorFacade::SetMinChangePeriod)
+            .def("set_max_accumulated_score", &ActiveSpeakerDetectorFacade::SetMaxAccumulatedScore)
+            .def("set_noise_gating_threshold", &ActiveSpeakerDetectorFacade::SetNoiseGatingThreshold)
+            .def("set_min_activation_score", &ActiveSpeakerDetectorFacade::SetMinActivationScore)
+            .def("add_incoming_source_group", &ActiveSpeakerDetectorFacade::AddIncomingSourceGroup)
+            .def("remove_incoming_source_group", &ActiveSpeakerDetectorFacade::RemoveIncomingSourceGroup);
+
+    py::class_<ActiveSpeakerMultiplexerFacade>(m, "ActiveSpeakerMultiplexerFacade")
+            .def(py::init<TimeService &, py::function, py::function>())
+            .def("set_max_accumulated_score", &ActiveSpeakerMultiplexerFacade::SetMaxAccumulatedScore)
+            .def("set_noise_gating_threshold", &ActiveSpeakerMultiplexerFacade::SetNoiseGatingThreshold)
+            .def("set_min_activation_score", &ActiveSpeakerMultiplexerFacade::SetMinActivationScore)
+            .def("add_incoming_source_group", &ActiveSpeakerMultiplexerFacade::AddIncomingSourceGroup)
+            .def("remove_incoming_source_group", &ActiveSpeakerMultiplexerFacade::RemoveIncomingSourceGroup)
+            .def("add_rtp_stream_transponder", &ActiveSpeakerMultiplexerFacade::AddRTPStreamTransponder)
+            .def("remove_rtp_stream_transponder", &ActiveSpeakerMultiplexerFacade::RemoveRTPStreamTransponder)
+            .def("stop", &ActiveSpeakerMultiplexerFacade::Stop);
+
+    py::class_<RTPIncomingMediaStreamDepacketizer>(m, "RTPIncomingMediaStreamDepacketizer")
+            .def(py::init<std::shared_ptr<RTPIncomingMediaStream> &>())
+            .def("stop", &RTPIncomingMediaStreamDepacketizer::Stop);
+
+    /*py::class_<SimulcastMediaFrameListener>(m, "SimulcastMediaFrameListener")
+            .def(py::init<TimeService &, DWORD, DWORD>())
+            .def("set_num_layers", &SimulcastMediaFrameListener::SetNumLayers)
+            .def("attach_to", &SimulcastMediaFrameListener::AttachTo)
+            .def("detach", &SimulcastMediaFrameListener::Detach)
+            .def("stop", &SimulcastMediaFrameListener::Stop)
+            .def("add_media_listener", &SimulcastMediaFrameListener::AddMediaListener)
+            .def("remove_media_listener", &SimulcastMediaFrameListener::RemoveMediaListener);*/
+
+    py::class_<MediaFrameReader>(m, "MediaFrameReader")
+            .def(py::init<py::function, bool, uint32_t, bool>())
+            .def("grab_next_frame", &MediaFrameReader::GrabNextFrame);
+
+    py::class_<MP4RecorderFacade>(m, "MP4RecorderFacade")
+            .def(py::init<py::function, py::function>())
+            .def("create", &MP4RecorderFacade::Create)
+            .def("record", py::overload_cast<bool, bool>(&MP4RecorderFacade::Record))
+            .def("stop", &MP4RecorderFacade::Stop)
+            .def("close", py::overload_cast<>(&MP4RecorderFacade::Close))
+            .def("set_time_shift_duration", &MP4RecorderFacade::SetTimeShiftDuration)
+            .def("set_h_parameter_sets", &MP4RecorderFacade::SetH264ParameterSets)
+            .def("close", py::overload_cast<bool>(&MP4RecorderFacade::Close));
+
+    py::class_<PlayerFacade>(m, "PlayerFacade")
+            .def(py::init<py::function>())
+            .def("get_audio_source", &PlayerFacade::GetAudioSource)
+            .def("get_video_source", &PlayerFacade::GetVideoSource)
+            .def("reset", &PlayerFacade::Reset)
+            .def("open", &PlayerFacade::Open)
+            .def("has_audio_track", &PlayerFacade::HasAudioTrack)
+            .def("has_video_track", &PlayerFacade::HasVideoTrack)
+            .def("get_audio_codec", &PlayerFacade::GetAudioCodec)
+            .def("get_video_codec", &PlayerFacade::GetVideoCodec)
+            .def("get_duration", &PlayerFacade::GetDuration)
+            .def("get_video_width", &PlayerFacade::GetVideoWidth)
+            .def("get_video_height", &PlayerFacade::GetVideoHeight)
+            .def("get_video_bitrate", &PlayerFacade::GetVideoBitrate)
+            .def("get_video_framerate", &PlayerFacade::GetVideoFramerate)
+            .def("play", &PlayerFacade::Play)
+            .def("pre_seek", &PlayerFacade::PreSeek)
+            .def("seek", &PlayerFacade::Seek)
+            .def("tell", &PlayerFacade::Tell)
+            .def("stop", &PlayerFacade::Stop)
+            .def("close", &PlayerFacade::Close);
+
+    py::class_<RTPStreamTransponderFacade>(m, "RTPStreamTransponderFacade")
+            .def(py::init<std::shared_ptr<RTPOutgoingSourceGroup> &, std::shared_ptr<RTPSender> &, py::function>())
+            .def("set_incoming", &RTPStreamTransponderFacade::SetIncoming)
+            .def("reset_incoming", &RTPStreamTransponderFacade::ResetIncoming)
+            .def("append_h_parameter_sets", &RTPStreamTransponderFacade::AppendH264ParameterSets)
+            .def("select_layer", &RTPStreamTransponderFacade::SelectLayer)
+            .def("mute", &RTPStreamTransponderFacade::Mute)
+            .def("set_intra_only_forwarding", &RTPStreamTransponderFacade::SetIntraOnlyForwarding)
+            .def("close", &RTPStreamTransponderFacade::Close);
+
+    py::class_<SenderSideEstimatorListener>(m, "SenderSideEstimatorListener")
+            .def(py::init<py::function>());
+
     py::class_<MediaFrame::Listener>(m, "MediaFrameListener");
+    py::class_<RemoteRateEstimator::Listener>(m, "RemoteRateEstimatorListener");
 }
