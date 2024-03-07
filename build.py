@@ -1,3 +1,4 @@
+import _imp
 import os
 import re
 import subprocess
@@ -30,16 +31,12 @@ class CMakeBuild(build_ext):
         # Can be set with Conda-Build, for example.
         cmake_generator = os.environ.get("CMAKE_GENERATOR", "")
 
-        proc = subprocess.run(
-            ["python3-config", "--extension-suffix"], check=True, stdout=subprocess.PIPE
-        )
-        suffix = proc.stdout.decode("utf8").strip()
-
         # Set Python_EXECUTABLE instead if you use PYBIND11_FINDPYTHON
         # EXAMPLE_VERSION_INFO shows you how to pass a value into the C++ code
         # from Python.
         cmake_args = [
-            f"-DCMAKE_LIBRARY_SUFFIX={suffix}",
+            f"-DPython3_ROOT_DIR={str(Path(sys.executable).parent.parent)}",
+            f"-DCMAKE_LIBRARY_SUFFIX={_imp.extension_suffixes()[0]}",
             f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}{os.sep}pymedooze{os.sep}",
             f"-DCMAKE_BUILD_TYPE={cfg}",  # not used on MSVC, but no harm
         ]
