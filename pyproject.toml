@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "pymedooze"
+version = "0.1.0"
+description = "Python wrapper for medooze media-server."
+authors = ["RuslanUC <dev_ruslan_uc@protonmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+include = ["CMakeLists.txt", "src/**", "media-server/src/**", "media-server/include/**", "media-server/ext/crc32c/**",
+    "media-server/ext/libdatachannels/include/**", "media-server/ext/libdatachannels/src/**",
+    "media-server/ext/libdatachannels/CMakeLists.txt", "media-server/ext/mp4v2/libutil/**",
+    "media-server/ext/mp4v2/libplatform/**", "media-server/ext/mp4v2/src/**", "media-server/ext/mp4v2/include/**",
+    "media-server/ext/mp4v2/CMakeLists.txt"]
+
+[tool.poetry.build]
+generate-setup-file = true
+script = "build.py"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+semanticsdp = "^0.1.0b3"
+
+
+[build-system]
+requires = ["poetry-core", "setuptools"]
+build-backend = "poetry.core.masonry.api"

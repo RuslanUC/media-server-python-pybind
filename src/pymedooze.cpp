@@ -20,7 +20,7 @@ namespace py = pybind11;
 
 Logger Logger::instance;
 
-PYBIND11_MODULE(pymedooze, m) {
+PYBIND11_MODULE(_pymedooze, m) {
     py::class_<MediaServer>(m, "MediaServer")
             .def_static("initialize", &MediaServer::Initialize)
             .def_static("terminate", &MediaServer::Terminate)
@@ -103,6 +103,9 @@ PYBIND11_MODULE(pymedooze, m) {
             .def("set_priority", &RTPBundleTransport::SetPriority)
             .def("set_ice_timeout", &RTPBundleTransport::SetIceTimeout)
             .def("get_time_service", &RTPBundleTransport::GetTimeService);
+
+    py::class_<RTPBundleTransport::Connection>(m, "RTPBundleTransportConnection")
+            .def_readonly("transport", &RTPBundleTransport::Connection::transport);
 
     py::class_<RTPIncomingMediaStream>(m, "RTPIncomingMediaStream")
             .def("get_media_ssrc", &RTPIncomingMediaStream::GetMediaSSRC)
@@ -195,8 +198,8 @@ PYBIND11_MODULE(pymedooze, m) {
             .def("reset", &RTPReceiver::Reset);
 
     py::class_<MediaFrame::Producer>(m, "MediaFrameProducer")
-            .def("AddMediaListener", &MediaFrame::Producer::AddMediaListener)
-            .def("RemoveMediaListener", &MediaFrame::Producer::RemoveMediaListener);
+            .def("add_media_listener", &MediaFrame::Producer::AddMediaListener)
+            .def("remove_media_listener", &MediaFrame::Producer::RemoveMediaListener);
 
     py::class_<LayerInfo>(m, "LayerInfo")
             .def_readwrite_static("max_layer_id", &LayerInfo::MaxLayerId)

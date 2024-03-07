@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.20)
 project(pymedooze)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -123,6 +123,7 @@ add_library(pymedooze SHARED
 
 target_include_directories(pymedooze PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}/src
+        ${CMAKE_CURRENT_LIST_DIR}/src/include
         ${CMAKE_CURRENT_LIST_DIR}/media-server/include
         ${CMAKE_CURRENT_LIST_DIR}/media-server/src
         ${CMAKE_CURRENT_LIST_DIR}/media-server/ext/libdatachannels/src
@@ -130,13 +131,12 @@ target_include_directories(pymedooze PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}/media-server/ext/mp4v2/include
         ${CMAKE_CURRENT_LIST_DIR}/media-server/ext/crc32c/include
         ${CMAKE_CURRENT_LIST_DIR}/media-server/ext/crc32c/config/Linux-x86_64
-        /usr/include/python3.11/
-        /usr/include/ffmpeg
 )
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -fexceptions -g -flto")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -fexceptions -std=c++17 -g -flto")
 target_compile_options(mp4v2-static PUBLIC -Wno-narrowing -fPIC)
+set_target_properties(pymedooze PROPERTIES PREFIX "" SUFFIX "${CMAKE_LIBRARY_SUFFIX}" OUTPUT_NAME "_pymedooze")
 #target_link_options(pymedooze PUBLIC "-Wl,--no-undefined")
 
 target_link_libraries(pymedooze
