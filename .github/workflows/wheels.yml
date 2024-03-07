@@ -11,25 +11,30 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
+        os: [ubuntu-latest]
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      # Used to host cibuildwheel
+      - name: Install dos2unix
+        run: sudo apt update && DEBIAN_FRONTEND=noninteractive sudo apt install dos2unix -y
+
+      - name: Patch log.h and RTPBundleTransport.cpp
+        run: |
+          git apply log.patch
+          dos2unix media-server/src/RTPBundleTransport.cpp && patch -p1 -l -i rtp_bundle_transport.patch
+
       - uses: actions/setup-python@v3
-
-      - name: Install dependencies
-        run: sudo apt update && DEBIAN_FRONTEND=noninteractive sudo apt install -y openssl1.1-dev xmlrpc-c-dev libsrtp-dev libx264-dev libavcodec-dev libvpx-dev git
 
       - name: Install cibuildwheel
         run: python -m pip install cibuildwheel==2.16.5
 
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
-        # to supply options, put them in 'env', like:
-        # env:
-        #   CIBW_SOME_OPTION: value
+        env:
+          CIBW_PROJECT_REQUIRES_PYTHON: ">=3.9"
 
       - uses: actions/upload-artifact@v4
         with:

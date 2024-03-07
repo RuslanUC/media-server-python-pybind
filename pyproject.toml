@@ -24,3 +24,10 @@ semanticsdp = "^0.1.0b3"
 [build-system]
 requires = ["poetry-core", "setuptools"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.cibuildwheel]
+build = "*-manylinux_x86_64"
+
+[[tool.cibuildwheel.overrides]]
+select = "*-manylinux_x86_64"
+before-all = "yum install -y https://download1.rpmfusion.org/free/el/updates/7/x86_64/r/rpmfusion-free-release-7-4.noarch.rpm && yum groupinstall 'Development Tools' -y && yum install -y wget openssl-devel xmlrpc-c-devel git cmake x264-devel ffmpeg-devel && cp /usr/include/ffmpeg/* /usr/include/ -r && wget https://github.com/webmproject/libvpx/archive/v1.13.0/libvpx-1.13.0.tar.gz && tar xvf libvpx-1.13.0.tar.gz && cd libvpx-1.13.0 && ./configure --enable-pic --prefix=/usr && make -j6 && make install && cd && wget https://github.com/cisco/libsrtp/archive/refs/tags/v2.4.0.tar.gz && tar xvf v2.4.0.tar.gz && cd libsrtp-2.4.0 && ./configure --enable-pic --prefix=/usr && make -j6 && make install && cd && git clone https://github.com/pybind/pybind11 && cp pybind11/include/pybind11 /usr/include/ -r"

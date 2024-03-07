@@ -1,0 +1,13 @@
+--- a/media-server/src/RTPBundleTransport.cpp	2024-03-11 19:25:34.871960200 +0200
++++ b/media-server/src/RTPBundleTransport.cpp	2024-03-11 19:19:53.539241900 +0200
+@@ -48,6 +48,10 @@
+ #include <linux/if_packet.h>
+ #include <fcntl.h>
+ 
++#ifndef PACKET_QDISC_BYPASS
++#define PACKET_QDISC_BYPASS 20
++#endif
++
+ void RTPBundleTransport::SetRawTx(int32_t ifindex, unsigned int sndbuf, bool skipQdisc, const std::string& selfLladdr, uint32_t defaultSelfAddr, const std::string& defaultDstLladdr, uint16_t port)
+ {
+ 

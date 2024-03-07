@@ -1,0 +1,14 @@
+--- a/media-server/include/log.h  2024-03-08 16:49:40.016056400 +0200
++++ b/media-server/include/log.h        2024-03-08 18:50:33.974898500 +0200
+@@ -13,6 +13,11 @@
+ #include <sys/types.h>
+ #endif
+
++#if __GLIBC__ == 2 && __GLIBC_MINOR__ < 30
++#include <sys/syscall.h>
++#define gettid() syscall(SYS_gettid)
++#endif
++
+ class Logger
+ {
+ public:

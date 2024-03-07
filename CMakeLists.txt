@@ -15,6 +15,8 @@ fetchcontent_declare(
 
 FetchContent_MakeAvailable(mp4v2)
 
+find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
+
 file(GLOB_RECURSE SOURCES_H265 RELATIVE ${CMAKE_CURRENT_LIST_DIR} "media-server/src/h265/*.cpp")
 file(GLOB_RECURSE SOURCES_H264 RELATIVE ${CMAKE_CURRENT_LIST_DIR} "media-server/src/h264/*.cpp")
 file(GLOB_RECURSE SOURCES_VP8 RELATIVE ${CMAKE_CURRENT_LIST_DIR} "media-server/src/vp8/*.cpp")
@@ -131,6 +133,7 @@ target_include_directories(pymedooze PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}/media-server/ext/mp4v2/include
         ${CMAKE_CURRENT_LIST_DIR}/media-server/ext/crc32c/include
         ${CMAKE_CURRENT_LIST_DIR}/media-server/ext/crc32c/config/Linux-x86_64
+        ${Python3_INCLUDE_DIRS}
 )
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -fexceptions -g -flto")
