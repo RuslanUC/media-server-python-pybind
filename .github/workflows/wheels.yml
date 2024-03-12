@@ -18,6 +18,9 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install dos2unix
+        run: sudo apt update && DEBIAN_FRONTEND=noninteractive sudo apt install dos2unix -y
+
       - name: Patch log.h and RTPBundleTransport.cpp
         run: |
           git apply log.patch
