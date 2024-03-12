@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from semanticsdp import IceInfo, DTLSInfo, Setup, SDPInfo, CandidateInfo
 
 from pymedooze._pymedooze import RTPBundleTransport, MediaServer

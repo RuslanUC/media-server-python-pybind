@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from semanticsdp import SDPInfo, MediaInfo
 
 from pymedooze._pymedooze import Properties
