@@ -6,11 +6,15 @@ authors = ["RuslanUC <dev_ruslan_uc@protonmail.com>"]
 license = "MIT"
 readme = "README.md"
 
-include = ["CMakeLists.txt", "src/**", "media-server/src/**", "media-server/include/**", "media-server/ext/crc32c/**",
-    "media-server/ext/libdatachannels/include/**", "media-server/ext/libdatachannels/src/**",
-    "media-server/ext/libdatachannels/CMakeLists.txt", "media-server/ext/mp4v2/libutil/**",
-    "media-server/ext/mp4v2/libplatform/**", "media-server/ext/mp4v2/src/**", "media-server/ext/mp4v2/include/**",
-    "media-server/ext/mp4v2/CMakeLists.txt"]
+include = [
+    {format = "sdist", path = "**/CMakeLists.txt"},
+    {format = "sdist", path = "**/*.cpp"},
+    {format = "sdist", path = "**/*.hpp"},
+    {format = "sdist", path = "**/*.cc"},
+    {format = "sdist", path = "**/*.c"},
+    {format = "sdist", path = "**/*.h"},
+    {format = "sdist", path = "**/*.in"},
+]
 
 [tool.poetry.build]
 generate-setup-file = true
@@ -27,6 +31,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.cibuildwheel]
 build = "*-manylinux_x86_64"
+repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel} --exclude libGLdispatch.so.0"
 
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_x86_64"
