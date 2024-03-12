@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedooze"
-version = "0.1.0b2"
+version = "0.1.0b3"
 description = "Python wrapper for medooze media-server."
 authors = ["RuslanUC <dev_ruslan_uc@protonmail.com>"]
 license = "MIT"

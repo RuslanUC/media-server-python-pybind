@@ -34,6 +34,7 @@ PYBIND11_MODULE(_pymedooze, m) {
             .def_static("set_thread_name", &MediaServer::SetThreadName);
 
     py::class_<Properties>(m, "Properties")
+            .def(py::init<>())
             .def("set_int", py::overload_cast<const char *, int>(&Properties::SetProperty))
             .def("set_string", py::overload_cast<const char *, const char *>(&Properties::SetProperty))
             .def("set_bool", [](Properties &p, const char *key, bool val) {
